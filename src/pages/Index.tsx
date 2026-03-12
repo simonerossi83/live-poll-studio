@@ -1,16 +1,36 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { generateUsername } from "@/lib/username";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GraduationCap } from "lucide-react";
+import { isValidUUID, sanitizeText } from "@/lib/utils";
 
 const Index = () => {
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
   const [selectedSchool, setSelectedSchool] = useState("");
   const [joining, setJoining] = useState(false);
   const navigate = useNavigate();
+
+  // If the student has already joined, redirect back to the quiz
+  useEffect(() => {
+    const existingStudentId = sessionStorage.getItem("studentId");
+    if (existingStudentId && isValidUUID(existingStudentId)) {
+      navigate(`/quiz?student=${existingStudentId}`, { replace: true });
+    } else if (existingStudentId) {
+      // Invalid stored ID — clear it
+      sessionStorage.removeItem("studentId");
+    }
+  }, [navigate]);
+
+  // Generate a username once per session
+  useEffect(() => {
+    if (!sessionStorage.getItem("username")) {
+      sessionStorage.setItem("username", generateUsername());
+    }
+  }, []);
 
   useEffect(() => {
     supabase.from("schools").select("id, name").order("name").then(({ data }) => {
@@ -19,15 +39,21 @@ const Index = () => {
   }, []);
 
   const handleJoin = async () => {
-    if (!selectedSchool) return;
+    if (!selectedSchool || !isValidUUID(selectedSchool)) return;
     setJoining(true);
+    const username = sanitizeText(
+      sessionStorage.getItem("username") ?? generateUsername(),
+      30
+    );
+    sessionStorage.setItem("username", username);
     const { data, error } = await supabase
       .from("students")
-      .insert({ school_id: selectedSchool })
+      .insert({ school_id: selectedSchool, username })
       .select("id")
       .single();
 
     if (data && !error) {
+      sessionStorage.setItem("studentId", data.id);
       navigate(`/quiz?student=${data.id}`);
     }
     setJoining(false);

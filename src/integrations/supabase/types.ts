@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           id: string
           question_id: string
+          response_time_ms: number | null
           selected_option_index: number
           student_id: string
         }
@@ -26,6 +27,7 @@ export type Database = {
           created_at?: string
           id?: string
           question_id: string
+          response_time_ms?: number | null
           selected_option_index: number
           student_id: string
         }
@@ -33,6 +35,7 @@ export type Database = {
           created_at?: string
           id?: string
           question_id?: string
+          response_time_ms?: number | null
           selected_option_index?: number
           student_id?: string
         }
@@ -109,16 +112,19 @@ export type Database = {
           created_at: string
           id: string
           school_id: string
+          username: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           school_id: string
+          username?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           school_id?: string
+          username?: string | null
         }
         Relationships: [
           {

@@ -7,6 +7,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Plus, X } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import { sanitizeText, isValidOptionIndex } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   question: Tables<"questions"> | null;
@@ -19,6 +21,7 @@ export function QuestionForm({ question, order, onClose }: Props) {
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [correctIndex, setCorrectIndex] = useState(0);
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (question) {
@@ -43,22 +46,31 @@ export function QuestionForm({ question, order, onClose }: Props) {
 
   const handleSave = async () => {
     if (!text.trim() || options.some((o) => !o.trim())) return;
+    if (!isValidOptionIndex(correctIndex, options.length)) return;
     setSaving(true);
 
     const payload = {
-      question_text: text.trim(),
-      options: options.map((o) => o.trim()),
+      question_text: sanitizeText(text.trim(), 1000),
+      options: options.map((o) => sanitizeText(o.trim(), 500)),
       correct_option_index: correctIndex,
       display_order: question ? question.display_order : order,
     };
 
-    if (question) {
-      await supabase.from("questions").update(payload).eq("id", question.id);
-    } else {
-      await supabase.from("questions").insert(payload);
-    }
+    const result = question
+      ? await supabase.from("questions").update(payload).eq("id", question.id)
+      : await supabase.from("questions").insert(payload);
 
     setSaving(false);
+
+    if (result.error) {
+      toast({
+        title: question ? "Could not update question" : "Could not create question",
+        description: result.error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     onClose();
   };
 
