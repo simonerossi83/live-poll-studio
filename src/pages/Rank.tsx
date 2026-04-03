@@ -67,6 +67,8 @@ interface SchoolRankRow {
   correct: number;
   total: number;
   pct: number;
+  studentsInSchool: number;
+  weightedScore: number; // correct / studentsInSchool  (avg correct per student)
 }
 
 interface PlayerRankRow {
@@ -125,6 +127,14 @@ const Rank = () => {
       schoolNameMap.set(s.id as string, s.name as string);
     }
 
+    // Build studentsPerSchool count using DB data (dynamic, not hardcoded)
+    const studentsPerSchool: Record<string, number> = {};
+    for (const s of students) {
+      const sId = s.school_id as string;
+      const sName = sId ? (schoolNameMap.get(sId) ?? "Unknown") : "Unknown";
+      studentsPerSchool[sName] = (studentsPerSchool[sName] ?? 0) + 1;
+    }
+
     const schoolMap: Record<string, { correct: number; total: number }> = {};
     const playerMap: Record<string, { correct: number; totalTimeMs: number; timeCount: number }> = {};
 
@@ -155,13 +165,20 @@ const Rank = () => {
     }
 
     const rows: SchoolRankRow[] = Object.entries(schoolMap)
-      .map(([school, { correct, total }]) => ({
-        school: school.length > 22 ? school.slice(0, 22) + "..." : school,
-        correct,
-        total,
-        pct: total > 0 ? Math.round((correct / total) * 100) : 0,
-      }))
-      .sort((a, b) => b.correct - a.correct);
+      .map(([school, { correct, total }]) => {
+        const displayName = school.length > 22 ? school.slice(0, 22) + "..." : school;
+        const studentsInSchool = studentsPerSchool[school] ?? 1;
+        const weightedScore = parseFloat((correct / studentsInSchool).toFixed(2));
+        return {
+          school: displayName,
+          correct,
+          total,
+          pct: total > 0 ? Math.round((correct / total) * 100) : 0,
+          studentsInSchool,
+          weightedScore,
+        };
+      })
+      .sort((a, b) => b.weightedScore - a.weightedScore);
 
     setData(rows);
 
@@ -287,7 +304,7 @@ const Rank = () => {
           </div>
           <CardTitle className="text-2xl font-bold">School Ranking</CardTitle>
           <CardDescription className="text-base">
-            Total correct answers across all questions, grouped by school
+            Average correct answers per student, grouped by school
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -310,7 +327,7 @@ const Rank = () => {
                   />
                   <XAxis
                     type="number"
-                    allowDecimals={false}
+                    allowDecimals={true}
                     tick={{ fontSize: 12 }}
                     domain={[0, "dataMax"]}
                   />
@@ -328,20 +345,20 @@ const Rank = () => {
                       fontSize: 13,
                     }}
                     formatter={(_value: number, _name: string, props: any) => [
-                      `${props.payload.correct} / ${props.payload.total} answers (${props.payload.pct}% correct)`,
+                      `${props.payload.weightedScore.toFixed(2)} correct/student  (${props.payload.correct} correct, ${props.payload.studentsInSchool} students, ${props.payload.pct}% accuracy)`,
                       props.payload.school,
                     ]}
                   />
-                  <Bar dataKey="correct" radius={[0, 6, 6, 0]} maxBarSize={40}>
+                  <Bar dataKey="weightedScore" radius={[0, 6, 6, 0]} maxBarSize={40}>
                     {data.map((_, i) => (
                       <Cell key={i} fill={SCHOOL_COLORS[i % SCHOOL_COLORS.length]} />
                     ))}
                     <LabelList
-                      dataKey="correct"
+                      dataKey="weightedScore"
                       position="right"
                       fontSize={13}
                       fontWeight={700}
-                      formatter={(v: number) => (v > 0 ? v : "")}
+                      formatter={(v: number) => (v > 0 ? v.toFixed(2) : "")}
                     />
                   </Bar>
                 </BarChart>
