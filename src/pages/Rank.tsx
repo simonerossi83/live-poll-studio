@@ -68,7 +68,6 @@ interface SchoolRankRow {
   total: number;
   pct: number;
   studentsInSchool: number;
-  weightedScore: number; // correct / studentsInSchool  (avg correct per student)
 }
 
 interface PlayerRankRow {
@@ -168,17 +167,15 @@ const Rank = () => {
       .map(([school, { correct, total }]) => {
         const displayName = school.length > 22 ? school.slice(0, 22) + "..." : school;
         const studentsInSchool = studentsPerSchool[school] ?? 1;
-        const weightedScore = parseFloat((correct / studentsInSchool).toFixed(2));
         return {
           school: displayName,
           correct,
           total,
           pct: total > 0 ? Math.round((correct / total) * 100) : 0,
           studentsInSchool,
-          weightedScore,
         };
       })
-      .sort((a, b) => b.weightedScore - a.weightedScore);
+      .sort((a, b) => b.correct - a.correct || b.pct - a.pct);
 
     setData(rows);
 
@@ -304,7 +301,7 @@ const Rank = () => {
           </div>
           <CardTitle className="text-2xl font-bold">School Ranking</CardTitle>
           <CardDescription className="text-base">
-            Average correct answers per student, grouped by school
+            Total correct answers per school (equal students — tiebreak by accuracy)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -327,7 +324,7 @@ const Rank = () => {
                   />
                   <XAxis
                     type="number"
-                    allowDecimals={true}
+                    allowDecimals={false}
                     tick={{ fontSize: 12 }}
                     domain={[0, "dataMax"]}
                   />
@@ -345,20 +342,20 @@ const Rank = () => {
                       fontSize: 13,
                     }}
                     formatter={(_value: number, _name: string, props: any) => [
-                      `${props.payload.weightedScore.toFixed(2)} correct/student  (${props.payload.correct} correct, ${props.payload.studentsInSchool} students, ${props.payload.pct}% accuracy)`,
+                      `${props.payload.correct} correct / ${props.payload.studentsInSchool} students — ${props.payload.pct}% accuracy`,
                       props.payload.school,
                     ]}
                   />
-                  <Bar dataKey="weightedScore" radius={[0, 6, 6, 0]} maxBarSize={40}>
+                  <Bar dataKey="correct" radius={[0, 6, 6, 0]} maxBarSize={40}>
                     {data.map((_, i) => (
                       <Cell key={i} fill={SCHOOL_COLORS[i % SCHOOL_COLORS.length]} />
                     ))}
                     <LabelList
-                      dataKey="weightedScore"
+                      dataKey="correct"
                       position="right"
                       fontSize={13}
                       fontWeight={700}
-                      formatter={(v: number) => (v > 0 ? v.toFixed(2) : "")}
+                      formatter={(v: number) => (v > 0 ? v : "")}
                     />
                   </Bar>
                 </BarChart>

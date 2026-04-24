@@ -67,12 +67,12 @@ const Index = () => {
             <GraduationCap className="h-7 w-7 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Live Quiz</CardTitle>
-          <CardDescription className="text-base">Select your school to join the quiz</CardDescription>
+          <CardDescription className="text-base">Select your class to join the quiz</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-4">
           <Select value={selectedSchool} onValueChange={setSelectedSchool}>
             <SelectTrigger className="h-12 text-base">
-              <SelectValue placeholder="Choose your school" />
+              <SelectValue placeholder="Choose your class" />
             </SelectTrigger>
             <SelectContent>
               {schools.map((s) => (
